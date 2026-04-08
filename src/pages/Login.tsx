@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -71,6 +71,12 @@ export default function Login() {
               {loading ? "Ingresando..." : "Ingresar"}
             </Button>
           </form>
+          <p className="mt-4 text-center text-sm text-muted-foreground">
+            ¿No tienes cuenta?{" "}
+            <Link to="/register" className="text-primary underline hover:no-underline">
+              Regístrate aquí
+            </Link>
+          </p>
         </CardContent>
       </Card>
     </div>
