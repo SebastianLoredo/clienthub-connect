@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -9,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface PuestoCliente {
   id: string;
@@ -54,33 +56,52 @@ export default function SimilitudDialog({ puesto, open, onClose }: Props) {
     setSimilitudes([]);
 
     try {
-      // Fetch all puestos tipo
       const snap = await getDocs(collection(db, "puestos_tipo"));
       const puestosTipo = snap.docs.map((d) => ({ id: d.id, ...d.data() } as PuestoTipo));
 
       if (puestosTipo.length === 0) {
+        toast.warning("No hay puestos tipo registrados para comparar.");
         setLoading(false);
         return;
       }
 
-      // Use simple text similarity (Jaccard-like) as fallback
-      // In production, this would call an LLM edge function
-      const results: Similitud[] = puestosTipo
-        .map((pt) => {
-          const score = calcularSimilitud(puesto, pt);
-          return {
-            puestoTipo: pt,
-            porcentaje: score,
-            razon: `Comparación basada en nombre, área y descripción`,
-          };
-        })
-        .filter((s) => s.porcentaje > 10)
-        .sort((a, b) => b.porcentaje - a.porcentaje)
-        .slice(0, 10);
+      const { data, error } = await supabase.functions.invoke("buscar-similitudes", {
+        body: {
+          puestoCliente: {
+            nombre: puesto.nombre,
+            area: puesto.area,
+            descripcion: puesto.descripcion,
+            tecnologias: puesto.tecnologias,
+          },
+          puestosTipo: puestosTipo.map((p) => ({
+            id: p.id,
+            puesto: p.puesto,
+            departamento: p.departamento,
+            area: p.area,
+            nivel: p.nivel,
+            objetivo: p.objetivo,
+            responsabilidades: p.responsabilidades,
+          })),
+        },
+      });
 
-      setSimilitudes(results);
-    } catch {
-      console.error("Error buscando similitudes");
+      if (error) {
+        console.error("Edge function error:", error);
+        toast.error("Error al buscar similitudes con IA.");
+        setLoading(false);
+        return;
+      }
+
+      if (data?.error) {
+        toast.error(data.error);
+        setLoading(false);
+        return;
+      }
+
+      setSimilitudes(data.similitudes || []);
+    } catch (e) {
+      console.error("Error buscando similitudes:", e);
+      toast.error("Error al buscar similitudes.");
     } finally {
       setLoading(false);
     }
@@ -96,20 +117,20 @@ export default function SimilitudDialog({ puesto, open, onClose }: Props) {
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-muted-foreground">Buscando similitudes...</span>
+            <span className="ml-2 text-muted-foreground">Analizando con IA...</span>
           </div>
         ) : similitudes.length === 0 ? (
           <p className="text-muted-foreground text-center py-8">
-            No se encontraron puestos tipo similares. Asegúrate de tener puestos tipo registrados.
+            No se encontraron puestos tipo similares.
           </p>
         ) : (
           <div className="space-y-3">
-            {similitudes.map((s) => (
+            {similitudes.map((s, i) => (
               <div
-                key={s.puestoTipo.id}
-                className="flex items-center justify-between rounded-lg border p-4"
+                key={i}
+                className="flex items-start justify-between rounded-lg border p-4 gap-4"
               >
-                <div className="space-y-1">
+                <div className="space-y-1 flex-1">
                   <p className="font-medium">{s.puestoTipo.puesto}</p>
                   <p className="text-sm text-muted-foreground">
                     {s.puestoTipo.departamento} · {s.puestoTipo.area} · {s.puestoTipo.nivel}
@@ -118,7 +139,7 @@ export default function SimilitudDialog({ puesto, open, onClose }: Props) {
                 </div>
                 <Badge
                   variant={s.porcentaje >= 70 ? "default" : "secondary"}
-                  className="text-lg px-3 py-1"
+                  className="text-lg px-3 py-1 shrink-0"
                 >
                   {s.porcentaje}%
                 </Badge>
@@ -129,42 +150,4 @@ export default function SimilitudDialog({ puesto, open, onClose }: Props) {
       </DialogContent>
     </Dialog>
   );
-}
-
-function calcularSimilitud(
-  puesto: { nombre: string; area: string; descripcion: string; tecnologias: string },
-  tipo: PuestoTipo
-): number {
-  const normalize = (s: string) =>
-    s
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .split(/\W+/)
-      .filter((w) => w.length > 2);
-
-  const puestoWords = new Set([
-    ...normalize(puesto.nombre),
-    ...normalize(puesto.area),
-    ...normalize(puesto.descripcion),
-    ...normalize(puesto.tecnologias),
-  ]);
-
-  const tipoWords = new Set([
-    ...normalize(tipo.puesto),
-    ...normalize(tipo.area),
-    ...normalize(tipo.departamento),
-    ...normalize(tipo.objetivo),
-    ...normalize(tipo.responsabilidades),
-  ]);
-
-  if (puestoWords.size === 0 || tipoWords.size === 0) return 0;
-
-  let intersection = 0;
-  puestoWords.forEach((w) => {
-    if (tipoWords.has(w)) intersection++;
-  });
-
-  const union = new Set([...puestoWords, ...tipoWords]).size;
-  return Math.round((intersection / union) * 100);
 }
