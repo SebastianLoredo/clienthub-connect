@@ -10,6 +10,9 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { supabase } from "@/integrations/supabase/client";
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -129,17 +132,11 @@ export default function ClienteDetalle() {
     reader.onload = async () => {
       const base64 = (reader.result as string).split(",")[1];
       try {
-        // We'll use the edge function for PDF extraction
-        const response = await fetch(
-          `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID || "placeholder"}.supabase.co/functions/v1/extract-pdf`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ pdf: base64 }),
-          }
-        );
-        if (!response.ok) throw new Error("Error procesando PDF");
-        const data = await response.json();
+        const { data, error } = await supabase.functions.invoke("extract-pdf", {
+          body: { pdf: base64 },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
         if (data.puestos && Array.isArray(data.puestos)) {
           for (const p of data.puestos) {
             await addDoc(collection(db, "clientes", clienteId, "puestos"), {
