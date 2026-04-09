@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { buildReporteIndividualPptx } from "@/lib/reports/pptx";
-import { uploadReportePptx } from "@/lib/reports/storage";
+import { uploadReportePptx, triggerBlobDownload } from "@/lib/reports/storage";
 
 
 interface PuestoCliente {
@@ -146,7 +146,7 @@ export default function SimilitudDialog({ puesto, clienteId, open, onClose }: Pr
         pptxBlob: blob,
         puesto: { id: puesto.id, nombre: puesto.nombre },
       });
-      await pptx.writeFile({ fileName });
+      triggerBlobDownload(blob, fileName);
       toast.success("Reporte individual generado.");
     } catch (e) {
       console.error("Error generando reporte individual:", e);
