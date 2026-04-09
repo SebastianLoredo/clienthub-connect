@@ -40,7 +40,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, FileSpreadsheet } from "lucide-react";
+import { Plus, Trash2, Pencil, FileSpreadsheet, ChevronDown, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -75,13 +78,49 @@ const emptyForm = {
   responsabilidades: "",
 };
 
+/** Valor sentinela para filas con campo vacío en el desplegable. */
+const FILTER_EMPTY = "__FILTER_EMPTY__";
+
+type PuestoTipoFilterField = "departamento" | "area" | "nivel" | "codigo" | "puesto";
+
+const emptyFilterSelections: Record<PuestoTipoFilterField, string[]> = {
+  departamento: [],
+  area: [],
+  nivel: [],
+  codigo: [],
+  puesto: [],
+};
+
+function labelOpcionFiltro(valor: string): string {
+  return valor === FILTER_EMPTY ? "(Sin valor)" : valor;
+}
+
+function opcionesUnicasPorCampo(puestos: PuestoTipo[], campo: PuestoTipoFilterField): string[] {
+  const set = new Set<string>();
+  let hayVacios = false;
+  for (const p of puestos) {
+    const raw = (p[campo] ?? "").toString();
+    const v = raw.trim();
+    if (v === "") hayVacios = true;
+    else set.add(v);
+  }
+  const lista = Array.from(set).sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
+  if (hayVacios) lista.unshift(FILTER_EMPTY);
+  return lista;
+}
+
+function valorCeldaParaFiltro(p: PuestoTipo, campo: PuestoTipoFilterField): string {
+  const v = (p[campo] ?? "").toString().trim();
+  return v === "" ? FILTER_EMPTY : v;
+}
+
 export default function PuestosTipo() {
   const [puestos, setPuestos] = useState<PuestoTipo[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
-  const [filters, setFilters] = useState(emptyForm);
+  const [filterSelections, setFilterSelections] = useState(emptyFilterSelections);
   const excelInputRef = useRef<HTMLInputElement>(null);
   const [excelImportOpen, setExcelImportOpen] = useState(false);
   const [excelRows, setExcelRows] = useState<PuestoTipoImportRow[]>([]);
@@ -257,13 +296,42 @@ export default function PuestosTipo() {
     }
   };
 
-  const filtered = puestos.filter((p) =>
-    Object.keys(filters).every((key) => {
-      const filterVal = filters[key as keyof typeof filters].toLowerCase();
-      if (!filterVal) return true;
-      return (p[key as keyof PuestoTipo] || "").toString().toLowerCase().includes(filterVal);
-    })
-  );
+  const opcionesFiltros = useMemo(() => {
+    const keys: PuestoTipoFilterField[] = [
+      "departamento",
+      "area",
+      "nivel",
+      "codigo",
+      "puesto",
+    ];
+    return Object.fromEntries(keys.map((k) => [k, opcionesUnicasPorCampo(puestos, k)])) as Record<
+      PuestoTipoFilterField,
+      string[]
+    >;
+  }, [puestos]);
+
+  const filtered = useMemo(() => {
+    return puestos.filter((p) =>
+      (Object.keys(emptyFilterSelections) as PuestoTipoFilterField[]).every((key) => {
+        const selected = filterSelections[key];
+        if (selected.length === 0) return true;
+        const cell = valorCeldaParaFiltro(p, key);
+        return selected.includes(cell);
+      }),
+    );
+  }, [puestos, filterSelections]);
+
+  const toggleFiltro = (campo: PuestoTipoFilterField, valor: string) => {
+    setFilterSelections((prev) => {
+      const cur = prev[campo];
+      const next = cur.includes(valor) ? cur.filter((v) => v !== valor) : [...cur, valor];
+      return { ...prev, [campo]: next };
+    });
+  };
+
+  const limpiarFiltro = (campo: PuestoTipoFilterField) => {
+    setFilterSelections((prev) => ({ ...prev, [campo]: [] }));
+  };
 
   const formFields = (
     <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
@@ -465,25 +533,85 @@ export default function PuestosTipo() {
         </DialogContent>
       </Dialog>
 
-      {/* Filtros */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-        {[
-          { key: "departamento", label: "Departamento" },
-          { key: "area", label: "Área" },
-          { key: "nivel", label: "Nivel" },
-          { key: "codigo", label: "Código" },
-          { key: "puesto", label: "Puesto" },
-          { key: "objetivo", label: "Objetivo" },
-          { key: "responsabilidades", label: "Responsabilidades" },
-        ].map(({ key, label }) => (
-          <Input
-            key={key}
-            placeholder={`Filtrar ${label}`}
-            value={filters[key as keyof typeof filters]}
-            onChange={(e) => setFilters({ ...filters, [key]: e.target.value })}
-            className="text-xs"
-          />
-        ))}
+      {/* Filtros (multi-selección por columna) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+        {(
+          [
+            ["departamento", "Departamento"],
+            ["area", "Área"],
+            ["nivel", "Nivel"],
+            ["codigo", "Código"],
+            ["puesto", "Puesto"],
+          ] as const
+        ).map(([key, label]) => {
+          const k = key as PuestoTipoFilterField;
+          const selected = filterSelections[k];
+          const opciones = opcionesFiltros[k];
+          return (
+            <Popover key={key}>
+              <div className="flex gap-1">
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      "flex-1 justify-between h-9 px-2 text-xs font-normal",
+                      selected.length > 0 && "border-primary/60",
+                    )}
+                  >
+                    <span className="truncate">{label}</span>
+                    <span className="flex items-center gap-1 shrink-0 ml-1">
+                      {selected.length > 0 && (
+                        <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+                          {selected.length}
+                        </Badge>
+                      )}
+                      <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                {selected.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 shrink-0"
+                    onClick={() => limpiarFiltro(k)}
+                    aria-label={`Limpiar filtro ${label}`}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <PopoverContent className="w-[min(100vw-2rem,22rem)] p-0" align="start">
+                <div className="p-2 border-b text-xs text-muted-foreground">
+                  Marca una o más opciones (OR dentro de {label})
+                </div>
+                <ScrollArea className="h-[min(280px,40vh)]">
+                  <div className="p-2 space-y-2">
+                    {opciones.length === 0 ? (
+                      <p className="text-xs text-muted-foreground px-1 py-2">Sin valores en los datos.</p>
+                    ) : (
+                      opciones.map((opt) => (
+                        <label
+                          key={opt}
+                          className="flex items-start gap-2 rounded-md px-1 py-1.5 hover:bg-muted/80 cursor-pointer text-sm"
+                        >
+                          <Checkbox
+                            checked={selected.includes(opt)}
+                            onCheckedChange={() => toggleFiltro(k, opt)}
+                            className="mt-0.5"
+                          />
+                          <span className="break-words leading-snug">{labelOpcionFiltro(opt)}</span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              </PopoverContent>
+            </Popover>
+          );
+        })}
       </div>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
