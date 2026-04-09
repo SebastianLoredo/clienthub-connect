@@ -1,5 +1,5 @@
 import { useState, useEffect, type CSSProperties } from "react";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { buildReporteIndividualPptx } from "@/lib/reports/pptx";
+import { uploadReportePptx } from "@/lib/reports/storage";
 
 
 interface PuestoCliente {
@@ -130,8 +131,21 @@ export default function SimilitudDialog({ puesto, clienteId, open, onClose }: Pr
     }
     setGenerando(true);
     try {
+      // Get client name from Firestore
+      const clienteDoc = await getDoc(doc(db, "clientes", clienteId));
+      const clienteNombre = (clienteDoc.data() as any)?.nombre || "Cliente";
+
       const pptx = buildReporteIndividualPptx(puesto, similitudes);
       const fileName = `Reporte - ${puesto.nombre}.pptx`;
+      const blob = (await pptx.write({ outputType: "blob" })) as Blob;
+      await uploadReportePptx({
+        clienteId,
+        clienteNombre,
+        type: "individual",
+        fileName,
+        pptxBlob: blob,
+        puesto: { id: puesto.id, nombre: puesto.nombre },
+      });
       await pptx.writeFile({ fileName });
       toast.success("Reporte individual generado.");
     } catch (e) {
