@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { buildReporteIndividualPptx } from "@/lib/reports/pptx";
-import { uploadReportePptx } from "@/lib/reports/storage";
+
 
 interface PuestoCliente {
   id: string;
