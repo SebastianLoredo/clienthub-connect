@@ -14,7 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      reportes: {
+        Row: {
+          cliente_id: string
+          cliente_nombre: string
+          created_at: string
+          file_name: string
+          id: string
+          puesto_id: string | null
+          puesto_nombre: string | null
+          storage_path: string | null
+          type: string
+        }
+        Insert: {
+          cliente_id: string
+          cliente_nombre: string
+          created_at?: string
+          file_name: string
+          id?: string
+          puesto_id?: string | null
+          puesto_nombre?: string | null
+          storage_path?: string | null
+          type: string
+        }
+        Update: {
+          cliente_id?: string
+          cliente_nombre?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          puesto_id?: string | null
+          puesto_nombre?: string | null
+          storage_path?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
