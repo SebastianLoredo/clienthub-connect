@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { FirebaseError } from "firebase/app";
 import { collection, addDoc, deleteDoc, doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useNavigate } from "react-router-dom";
@@ -32,7 +33,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Eye } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 
 interface Cliente {
   id: string;
@@ -71,8 +72,9 @@ export default function Clientes() {
       setNombre("");
       setDialogOpen(false);
       toast.success("Cliente creado exitosamente");
-    } catch {
-      toast.error("Error al crear el cliente");
+    } catch (err) {
+      const code = err instanceof FirebaseError ? err.code : "unknown";
+      toast.error(`Error al crear el cliente (${code})`);
     }
   };
 
@@ -80,8 +82,9 @@ export default function Clientes() {
     try {
       await deleteDoc(doc(db, "clientes", id));
       toast.success("Cliente eliminado");
-    } catch {
-      toast.error("Error al eliminar el cliente");
+    } catch (err) {
+      const code = err instanceof FirebaseError ? err.code : "unknown";
+      toast.error(`Error al eliminar el cliente (${code})`);
     }
   };
 
@@ -92,8 +95,9 @@ export default function Clientes() {
       setEditDialogOpen(false);
       setEditId(null);
       toast.success("Cliente actualizado");
-    } catch {
-      toast.error("Error al actualizar");
+    } catch (err) {
+      const code = err instanceof FirebaseError ? err.code : "unknown";
+      toast.error(`Error al actualizar (${code})`);
     }
   };
 
@@ -156,17 +160,22 @@ export default function Clientes() {
           </TableHeader>
           <TableBody>
             {clientes.map((c) => (
-              <TableRow key={c.id}>
+              <TableRow
+                key={c.id}
+                className="cursor-pointer"
+                onClick={() => navigate(`/dashboard/clientes/${c.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    navigate(`/dashboard/clientes/${c.id}`);
+                  }
+                }}
+                tabIndex={0}
+                aria-label={`Ver detalle de ${c.nombre}`}
+              >
                 <TableCell className="font-medium">{c.nombre}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-end gap-2">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => navigate(`/dashboard/clientes/${c.id}`)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
                     <Button
                       size="icon"
                       variant="ghost"

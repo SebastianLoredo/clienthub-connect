@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   collection,
   addDoc,
@@ -6,6 +6,7 @@ import {
   doc,
   onSnapshot,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil, FileSpreadsheet } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import {
+  parsePuestosTipoExcel,
+  type PuestoTipoImportRow,
+} from "@/lib/parsePuestosTipoExcel";
+import { cn } from "@/lib/utils";
+
+/** Comparación de códigos para duplicados (trim + minúsculas). */
+function normalizeCodigo(c: string): string {
+  return c.trim().toLowerCase();
+}
 
 interface PuestoTipo {
   id: string;
@@ -69,6 +82,10 @@ export default function PuestosTipo() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [filters, setFilters] = useState(emptyForm);
+  const excelInputRef = useRef<HTMLInputElement>(null);
+  const [excelImportOpen, setExcelImportOpen] = useState(false);
+  const [excelRows, setExcelRows] = useState<PuestoTipoImportRow[]>([]);
+  const [excelSaving, setExcelSaving] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "puestos_tipo"), (snap) => {
@@ -108,6 +125,135 @@ export default function PuestosTipo() {
       toast.success("Puesto eliminado");
     } catch {
       toast.error("Error al eliminar");
+    }
+  };
+
+  const handleExcelFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const buf = await file.arrayBuffer();
+      const rows = parsePuestosTipoExcel(buf);
+      if (rows.length === 0) {
+        toast.warning(
+          "No hay filas válidas. Usa la primera fila como encabezados e incluye al menos la columna del puesto (ej. “Puesto” o “Nombre”).",
+        );
+        return;
+      }
+      setExcelRows(rows);
+      setExcelImportOpen(true);
+      toast.success(`${rows.length} fila(s) cargadas desde el archivo. Revisa y edita antes de subir.`);
+    } catch {
+      toast.error("No se pudo leer el archivo Excel. Comprueba que sea .xlsx o .xls.");
+    }
+  };
+
+  const updateExcelRow = (index: number, field: keyof PuestoTipoImportRow, value: string) => {
+    setExcelRows((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const removeExcelRow = (index: number) => {
+    setExcelRows((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const codigosEnBase = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of puestos) {
+      const k = normalizeCodigo(p.codigo ?? "");
+      if (k) s.add(k);
+    }
+    return s;
+  }, [puestos]);
+
+  type DupReason = "db" | "import";
+
+  const excelImportAnnotated = useMemo(() => {
+    const rows = excelRows.map((row, index) => {
+      const k = normalizeCodigo(row.codigo);
+      let duplicateReason: DupReason | null = null;
+      if (k) {
+        if (codigosEnBase.has(k)) duplicateReason = "db";
+        else {
+          const firstIdx = excelRows.findIndex((r) => normalizeCodigo(r.codigo) === k);
+          if (firstIdx !== index) duplicateReason = "import";
+        }
+      }
+      return { row, index, duplicateReason };
+    });
+
+    const rank = (d: DupReason | null) => {
+      if (d === "db") return 0;
+      if (d === "import") return 1;
+      return 2;
+    };
+
+    return [...rows].sort((a, b) => {
+      const ra = rank(a.duplicateReason);
+      const rb = rank(b.duplicateReason);
+      if (ra !== rb) return ra - rb;
+      return a.index - b.index;
+    });
+  }, [excelRows, codigosEnBase]);
+
+  const excelSaveableCount = useMemo(() => {
+    return excelImportAnnotated.filter(
+      ({ row, duplicateReason }) => row.puesto.trim() && duplicateReason === null,
+    ).length;
+  }, [excelImportAnnotated]);
+
+  const handleExcelBulkSave = async () => {
+    const toSave = excelImportAnnotated.filter(
+      ({ row, duplicateReason }) => row.puesto.trim() && duplicateReason === null,
+    );
+    if (toSave.length === 0) {
+      toast.error(
+        "No hay registros válidos para subir (todos están duplicados por código o falta el puesto).",
+      );
+      return;
+    }
+    setExcelSaving(true);
+    try {
+      let batch = writeBatch(db);
+      let ops = 0;
+      for (const { row } of toSave) {
+        const ref = doc(collection(db, "puestos_tipo"));
+        batch.set(ref, {
+          departamento: row.departamento,
+          area: row.area,
+          nivel: row.nivel,
+          codigo: row.codigo,
+          puesto: row.puesto.trim(),
+          objetivo: row.objetivo,
+          responsabilidades: row.responsabilidades,
+        });
+        ops += 1;
+        if (ops >= 500) {
+          await batch.commit();
+          batch = writeBatch(db);
+          ops = 0;
+        }
+      }
+      if (ops > 0) await batch.commit();
+      const conPuesto = excelRows.filter((r) => r.puesto.trim()).length;
+      const skipped = conPuesto - toSave.length;
+      if (skipped > 0) {
+        toast.success(
+          `${toSave.length} puesto(s) tipo guardados. ${skipped} omitido(s) por código duplicado.`,
+        );
+      } else {
+        toast.success(`${toSave.length} puesto(s) tipo guardados en la base de datos.`);
+      }
+      setExcelImportOpen(false);
+      setExcelRows([]);
+    } catch {
+      toast.error("Error al guardar en la base de datos.");
+    } finally {
+      setExcelSaving(false);
     }
   };
 
@@ -160,19 +306,164 @@ export default function PuestosTipo() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Puestos Tipo</h1>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button><Plus className="mr-2 h-4 w-4" />Nuevo Puesto Tipo</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>Nuevo Puesto Tipo</DialogTitle></DialogHeader>
-            {formFields}
-            <Button onClick={handleAdd} className="w-full">Guardar</Button>
-          </DialogContent>
-        </Dialog>
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={excelInputRef}
+            type="file"
+            accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+            className="hidden"
+            onChange={handleExcelFile}
+          />
+          <Button type="button" variant="outline" onClick={() => excelInputRef.current?.click()}>
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            Cargar Excel
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Puesto Tipo
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Nuevo Puesto Tipo</DialogTitle>
+              </DialogHeader>
+              {formFields}
+              <Button onClick={handleAdd} className="w-full">
+                Guardar
+              </Button>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
+
+      <Dialog
+        open={excelImportOpen}
+        onOpenChange={(o) => {
+          if (!o && !excelSaving) {
+            setExcelImportOpen(false);
+            setExcelRows([]);
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col gap-4">
+          <DialogHeader>
+            <DialogTitle>Importar desde Excel</DialogTitle>
+            <p className="text-sm text-muted-foreground font-normal">
+              Primera fila = encabezados reconocidos (Puesto, Departamento, Área, Nivel, Código, Objetivo,
+              Responsabilidades). El código no puede repetir uno ya guardado ni duplicarse en el archivo; esas
+              filas aparecen arriba en rojo y no se suben.
+            </p>
+          </DialogHeader>
+          {excelImportAnnotated.some((x) => x.duplicateReason !== null) && (
+            <p className="text-sm font-medium text-red-600 dark:text-red-400">
+              Las filas en rojo tienen un código duplicado (en base de datos o en el archivo) y no se incluirán
+              al subir.
+            </p>
+          )}
+          <ScrollArea className="h-[min(55vh,480px)] pr-4">
+            <div className="space-y-6">
+              {excelImportAnnotated.map(({ row, index, duplicateReason }, displayIdx) => (
+                <div
+                  key={index}
+                  className={cn(
+                    "rounded-lg border p-4 space-y-3",
+                    duplicateReason &&
+                      "border-red-500 bg-red-50 dark:bg-red-950/40 dark:border-red-600",
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-muted-foreground">Fila {displayIdx + 1}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive h-8"
+                      onClick={() => removeExcelRow(index)}
+                      disabled={excelSaving}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Quitar
+                    </Button>
+                  </div>
+                  {duplicateReason === "db" && (
+                    <p className="text-sm font-medium text-red-700 dark:text-red-300">
+                      Duplicado: este código ya existe en la base de datos. No se subirá.
+                    </p>
+                  )}
+                  {duplicateReason === "import" && (
+                    <p className="text-sm font-medium text-red-700 dark:text-red-300">
+                      Duplicado: el mismo código aparece más arriba en el archivo. No se subirá.
+                    </p>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(
+                      [
+                        ["departamento", "Departamento"],
+                        ["area", "Área"],
+                        ["nivel", "Nivel"],
+                        ["codigo", "Código"],
+                        ["puesto", "Puesto"],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <div key={key} className="space-y-1">
+                        <Label className="text-xs">{label}</Label>
+                        <Input
+                          value={row[key]}
+                          onChange={(e) => updateExcelRow(index, key, e.target.value)}
+                          disabled={excelSaving}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Objetivo</Label>
+                    <Textarea
+                      value={row.objetivo}
+                      onChange={(e) => updateExcelRow(index, "objetivo", e.target.value)}
+                      rows={2}
+                      disabled={excelSaving}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Responsabilidades</Label>
+                    <Textarea
+                      value={row.responsabilidades}
+                      onChange={(e) => updateExcelRow(index, "responsabilidades", e.target.value)}
+                      rows={2}
+                      disabled={excelSaving}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+          <Separator />
+          <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={excelSaving}
+              onClick={() => {
+                setExcelImportOpen(false);
+                setExcelRows([]);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={excelSaving || excelSaveableCount === 0}
+              onClick={handleExcelBulkSave}
+            >
+              {excelSaving ? "Subiendo…" : `Subir a la base de datos (${excelSaveableCount})`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Filtros */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">

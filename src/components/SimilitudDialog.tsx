@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type CSSProperties } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,6 +40,16 @@ interface Props {
   puesto: PuestoCliente;
   open: boolean;
   onClose: () => void;
+}
+
+/** 0% → rojo (hue 0), 100% → verde (hue 120), valores intermedios en el arco rojo–amarillo–verde. */
+function estiloPorcentajeSimilitud(porcentaje: number): CSSProperties {
+  const p = Math.max(0, Math.min(100, Number(porcentaje) || 0));
+  const hue = (p / 100) * 120;
+  return {
+    backgroundColor: `hsl(${hue}, 72%, 40%)`,
+    color: "#fafafa",
+  };
 }
 
 export default function SimilitudDialog({ puesto, open, onClose }: Props) {
@@ -138,8 +148,9 @@ export default function SimilitudDialog({ puesto, open, onClose }: Props) {
                   <p className="text-xs text-muted-foreground">{s.razon}</p>
                 </div>
                 <Badge
-                  variant={s.porcentaje >= 70 ? "default" : "secondary"}
-                  className="text-lg px-3 py-1 shrink-0"
+                  variant="secondary"
+                  className="text-lg px-3 py-1 shrink-0 border-0 shadow-none hover:opacity-95"
+                  style={estiloPorcentajeSimilitud(s.porcentaje)}
                 >
                   {s.porcentaje}%
                 </Badge>
