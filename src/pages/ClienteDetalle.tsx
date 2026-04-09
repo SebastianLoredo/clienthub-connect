@@ -45,7 +45,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Pencil, Search, Upload } from "lucide-react";
 import SimilitudDialog from "@/components/SimilitudDialog";
 import { buildReporteGeneralPptx, type Similitud as SimilitudIA, type PuestoTipo as PuestoTipoIA } from "@/lib/reports/pptx";
-import { uploadReportePptx } from "@/lib/reports/storage";
+
 
 interface Puesto {
   id: string;
