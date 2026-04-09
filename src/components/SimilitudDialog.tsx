@@ -9,8 +9,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { buildReporteIndividualPptx } from "@/lib/reports/pptx";
+import { uploadReportePptx } from "@/lib/reports/storage";
 
 interface PuestoCliente {
   id: string;
@@ -38,6 +41,7 @@ interface Similitud {
 
 interface Props {
   puesto: PuestoCliente;
+  clienteId: string;
   open: boolean;
   onClose: () => void;
 }
@@ -52,9 +56,10 @@ function estiloPorcentajeSimilitud(porcentaje: number): CSSProperties {
   };
 }
 
-export default function SimilitudDialog({ puesto, open, onClose }: Props) {
+export default function SimilitudDialog({ puesto, clienteId, open, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [similitudes, setSimilitudes] = useState<Similitud[]>([]);
+  const [generando, setGenerando] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -117,6 +122,34 @@ export default function SimilitudDialog({ puesto, open, onClose }: Props) {
     }
   };
 
+  const handleGenerarReporte = async () => {
+    if (!clienteId) return;
+    if (similitudes.length === 0) {
+      toast.error("No hay similitudes para generar el reporte.");
+      return;
+    }
+    setGenerando(true);
+    try {
+      const pptx = buildReporteIndividualPptx(puesto, similitudes);
+      const fileName = `Reporte - ${puesto.nombre}.pptx`;
+      const arrayBuffer = (await pptx.write("arraybuffer")) as ArrayBuffer;
+      await uploadReportePptx({
+        clienteId,
+        type: "individual",
+        fileName,
+        pptxArrayBuffer: arrayBuffer,
+        puesto: { id: puesto.id, nombre: puesto.nombre },
+      });
+      await pptx.writeFile({ fileName });
+      toast.success("Reporte individual generado.");
+    } catch (e) {
+      console.error("Error generando reporte individual:", e);
+      toast.error("No se pudo generar el reporte.");
+    } finally {
+      setGenerando(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -135,6 +168,11 @@ export default function SimilitudDialog({ puesto, open, onClose }: Props) {
           </p>
         ) : (
           <div className="space-y-3">
+            <div className="flex justify-end">
+              <Button onClick={handleGenerarReporte} disabled={generando}>
+                {generando ? "Generando…" : "Generar reporte"}
+              </Button>
+            </div>
             {similitudes.map((s, i) => (
               <div
                 key={i}

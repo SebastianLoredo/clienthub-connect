@@ -44,6 +44,8 @@ import {
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Pencil, Search, Upload } from "lucide-react";
 import SimilitudDialog from "@/components/SimilitudDialog";
+import { buildReporteGeneralPptx, type Similitud as SimilitudIA, type PuestoTipo as PuestoTipoIA } from "@/lib/reports/pptx";
+import { uploadReportePptx } from "@/lib/reports/storage";
 
 interface Puesto {
   id: string;
@@ -63,6 +65,7 @@ export default function ClienteDetalle() {
   const [editId, setEditId] = useState<string | null>(null);
   const [similitudPuesto, setSimilitudPuesto] = useState<Puesto | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [generandoGeneral, setGenerandoGeneral] = useState(false);
 
   const [form, setForm] = useState({ nombre: "", area: "", descripcion: "", tecnologias: "" });
 
@@ -156,6 +159,66 @@ export default function ClienteDetalle() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const handleGenerarReporteGeneral = async () => {
+    if (!clienteId) return;
+    if (puestos.length === 0) {
+      toast.error("Este cliente no tiene puestos para generar el reporte.");
+      return;
+    }
+    setGenerandoGeneral(true);
+    try {
+      // Cache puestos tipo 1 sola vez
+      const snap = await (await import("firebase/firestore")).getDocs(collection(db, "puestos_tipo"));
+      const puestosTipo = snap.docs.map((d) => ({ id: d.id, ...d.data() } as PuestoTipoIA));
+      if (puestosTipo.length === 0) {
+        toast.error("No hay puestos tipo para comparar.");
+        return;
+      }
+
+      const similitudesPorPuestoId: Record<string, SimilitudIA[]> = {};
+      for (const p of puestos) {
+        const { data, error } = await supabase.functions.invoke("buscar-similitudes", {
+          body: {
+            puestoCliente: {
+              nombre: p.nombre,
+              area: p.area,
+              descripcion: p.descripcion,
+              tecnologias: p.tecnologias,
+            },
+            puestosTipo: puestosTipo.map((pt) => ({
+              id: pt.id,
+              puesto: pt.puesto,
+              departamento: pt.departamento,
+              area: pt.area,
+              nivel: pt.nivel,
+              objetivo: pt.objetivo,
+              responsabilidades: pt.responsabilidades,
+            })),
+          },
+        });
+        if (error) throw error;
+        similitudesPorPuestoId[p.id] = (data?.similitudes || []) as SimilitudIA[];
+      }
+
+      const pptx = buildReporteGeneralPptx(clienteNombre || "Cliente", puestos, similitudesPorPuestoId);
+      const fileName = `Reporte General - ${clienteNombre || clienteId}.pptx`;
+      const arrayBuffer = (await pptx.write("arraybuffer")) as ArrayBuffer;
+      await uploadReportePptx({
+        clienteId,
+        type: "general",
+        fileName,
+        pptxArrayBuffer: arrayBuffer,
+      });
+      await pptx.writeFile({ fileName });
+      toast.success("Reporte general generado.");
+    } catch (e) {
+      console.error("Error generando reporte general:", e);
+      toast.error("No se pudo generar el reporte general.");
+    } finally {
+      setGenerandoGeneral(false);
+    }
+  };
+
   const formFields = (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -207,6 +270,10 @@ export default function ClienteDetalle() {
         />
         <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
           <Upload className="mr-2 h-4 w-4" />Cargar PDF
+        </Button>
+
+        <Button onClick={handleGenerarReporteGeneral} disabled={generandoGeneral} variant="secondary">
+          {generandoGeneral ? "Generando…" : "Generar Reporte"}
         </Button>
       </div>
 
@@ -285,6 +352,7 @@ export default function ClienteDetalle() {
       {similitudPuesto && (
         <SimilitudDialog
           puesto={similitudPuesto}
+          clienteId={clienteId}
           open={!!similitudPuesto}
           onClose={() => setSimilitudPuesto(null)}
         />
