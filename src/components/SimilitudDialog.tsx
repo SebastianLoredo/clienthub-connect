@@ -132,14 +132,6 @@ export default function SimilitudDialog({ puesto, clienteId, open, onClose }: Pr
     try {
       const pptx = buildReporteIndividualPptx(puesto, similitudes);
       const fileName = `Reporte - ${puesto.nombre}.pptx`;
-      const arrayBuffer = (await pptx.write("arraybuffer")) as ArrayBuffer;
-      await uploadReportePptx({
-        clienteId,
-        type: "individual",
-        fileName,
-        pptxArrayBuffer: arrayBuffer,
-        puesto: { id: puesto.id, nombre: puesto.nombre },
-      });
       await pptx.writeFile({ fileName });
       toast.success("Reporte individual generado.");
     } catch (e) {

@@ -202,13 +202,6 @@ export default function ClienteDetalle() {
 
       const pptx = buildReporteGeneralPptx(clienteNombre || "Cliente", puestos, similitudesPorPuestoId);
       const fileName = `Reporte General - ${clienteNombre || clienteId}.pptx`;
-      const arrayBuffer = (await pptx.write("arraybuffer")) as ArrayBuffer;
-      await uploadReportePptx({
-        clienteId,
-        type: "general",
-        fileName,
-        pptxArrayBuffer: arrayBuffer,
-      });
       await pptx.writeFile({ fileName });
       toast.success("Reporte general generado.");
     } catch (e) {
