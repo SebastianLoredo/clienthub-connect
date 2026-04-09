@@ -45,7 +45,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Pencil, Search, Upload } from "lucide-react";
 import SimilitudDialog from "@/components/SimilitudDialog";
 import { buildReporteGeneralPptx, type Similitud as SimilitudIA, type PuestoTipo as PuestoTipoIA } from "@/lib/reports/pptx";
-import { uploadReportePptx } from "@/lib/reports/storage";
+
 
 interface Puesto {
   id: string;
@@ -202,13 +202,6 @@ export default function ClienteDetalle() {
 
       const pptx = buildReporteGeneralPptx(clienteNombre || "Cliente", puestos, similitudesPorPuestoId);
       const fileName = `Reporte General - ${clienteNombre || clienteId}.pptx`;
-      const arrayBuffer = (await pptx.write("arraybuffer")) as ArrayBuffer;
-      await uploadReportePptx({
-        clienteId,
-        type: "general",
-        fileName,
-        pptxArrayBuffer: arrayBuffer,
-      });
       await pptx.writeFile({ fileName });
       toast.success("Reporte general generado.");
     } catch (e) {
