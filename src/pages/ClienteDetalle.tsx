@@ -45,7 +45,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Pencil, Search, Upload } from "lucide-react";
 import SimilitudDialog from "@/components/SimilitudDialog";
 import { buildReporteGeneralPptx, type Similitud as SimilitudIA, type PuestoTipo as PuestoTipoIA } from "@/lib/reports/pptx";
-import { uploadReportePptx } from "@/lib/reports/storage";
+import { uploadReportePptx, triggerBlobDownload } from "@/lib/reports/storage";
 
 interface Puesto {
   id: string;
@@ -210,7 +210,7 @@ export default function ClienteDetalle() {
         fileName,
         pptxBlob: blob,
       });
-      await pptx.writeFile({ fileName });
+      triggerBlobDownload(blob, fileName);
       toast.success("Reporte general generado.");
     } catch (e) {
       console.error("Error generando reporte general:", e);

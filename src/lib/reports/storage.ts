@@ -1,3 +1,5 @@
+import { addDoc, collection, serverTimestamp, deleteDoc, doc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { supabase } from "@/integrations/supabase/client";
 
 export type ReportType = "general" | "individual";
@@ -12,28 +14,27 @@ export async function uploadReportePptx(params: {
 }) {
   const { clienteId, clienteNombre, type, fileName, pptxBlob, puesto } = params;
 
+  // Save file to Supabase Storage (no CORS issues)
   const storagePath = `${clienteId}/${Date.now()}-${fileName}`;
-
   const { error: uploadError } = await supabase.storage
     .from("reportes")
     .upload(storagePath, pptxBlob, {
       contentType:
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     });
-
   if (uploadError) throw uploadError;
 
-  const { error: insertError } = await supabase.from("reportes").insert({
-    cliente_id: clienteId,
-    cliente_nombre: clienteNombre,
+  // Save metadata to Firestore
+  const reportesCol = collection(db, "clientes", clienteId, "reportes");
+  await addDoc(reportesCol, {
     type,
-    file_name: fileName,
-    puesto_id: puesto?.id ?? null,
-    puesto_nombre: puesto?.nombre ?? null,
-    storage_path: storagePath,
+    fileName,
+    clienteNombre,
+    puestoId: puesto?.id ?? null,
+    puestoNombre: puesto?.nombre ?? null,
+    storagePath,
+    createdAt: serverTimestamp(),
   });
-
-  if (insertError) throw insertError;
 
   return { storagePath };
 }
@@ -46,10 +47,18 @@ export async function downloadReporte(storagePath: string) {
   return data;
 }
 
-export async function deleteReporte(id: string, storagePath: string | null) {
+export function triggerBlobDownload(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function deleteReporte(clienteId: string, reporteId: string, storagePath: string | null) {
   if (storagePath) {
     await supabase.storage.from("reportes").remove([storagePath]);
   }
-  const { error } = await supabase.from("reportes").delete().eq("id", id);
-  if (error) throw error;
+  await deleteDoc(doc(db, "clientes", clienteId, "reportes", reporteId));
 }
