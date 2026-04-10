@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 const items = [
   { title: "Mis Clientes", url: "/dashboard/clientes", icon: Users },
   { title: "Puestos Tipo", url: "/dashboard/puestos-tipo", icon: Briefcase },
-  { title: "Reportes", url: "/dashboard/reportes", icon: FileText },
+  { title: "Comparativas", url: "/dashboard/reportes", icon: FileText },
 ];
 
 export function AppSidebar() {

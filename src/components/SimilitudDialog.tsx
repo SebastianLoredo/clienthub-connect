@@ -136,7 +136,7 @@ export default function SimilitudDialog({ puesto, clienteId, open, onClose }: Pr
       const clienteNombre = (clienteDoc.data() as any)?.nombre || "Cliente";
 
       const pptx = buildReporteIndividualPptx(puesto, similitudes);
-      const fileName = `Reporte - ${puesto.nombre}.pptx`;
+      const fileName = `Comparativa - ${puesto.nombre}.pptx`;
       const blob = (await pptx.write({ outputType: "blob" })) as Blob;
       await uploadReportePptx({
         clienteId,
@@ -176,7 +176,7 @@ export default function SimilitudDialog({ puesto, clienteId, open, onClose }: Pr
           <div className="space-y-3">
             <div className="flex justify-end">
               <Button onClick={handleGenerarReporte} disabled={generando}>
-                {generando ? "Generando…" : "Generar reporte"}
+                {generando ? "Generando…" : "Generar comparativa"}
               </Button>
             </div>
             {similitudes.map((s, i) => (

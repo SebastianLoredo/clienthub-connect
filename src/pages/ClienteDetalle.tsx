@@ -201,7 +201,7 @@ export default function ClienteDetalle() {
       }
 
       const pptx = buildReporteGeneralPptx(clienteNombre || "Cliente", puestos, similitudesPorPuestoId);
-      const fileName = `Reporte General - ${clienteNombre || clienteId}.pptx`;
+      const fileName = `Comparativa General - ${clienteNombre || clienteId}.pptx`;
       const blob = (await pptx.write({ outputType: "blob" })) as Blob;
       await uploadReportePptx({
         clienteId: clienteId!,
@@ -274,7 +274,7 @@ export default function ClienteDetalle() {
         </Button>
 
         <Button onClick={handleGenerarReporteGeneral} disabled={generandoGeneral} variant="secondary">
-          {generandoGeneral ? "Generando…" : "Generar Reporte"}
+          {generandoGeneral ? "Generando…" : "Generar Comparativa"}
         </Button>
       </div>
 
