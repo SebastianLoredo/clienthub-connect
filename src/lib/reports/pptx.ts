@@ -133,7 +133,7 @@ export function buildReporteGeneralPptx(
 
   // Portada opcional muy ligera
   const cover = pptx.addSlide();
-  cover.addText("Reporte General", { x: 0.6, y: 1.6, w: 12.2, h: 0.8, fontSize: 40, bold: true, color: "111827" });
+  cover.addText("Comparativa General", { x: 0.6, y: 1.6, w: 12.2, h: 0.8, fontSize: 40, bold: true, color: "111827" });
   cover.addText(clienteNombre, { x: 0.6, y: 2.5, w: 12.2, h: 0.6, fontSize: 24, color: "374151" });
 
   for (const puesto of puestos) {
