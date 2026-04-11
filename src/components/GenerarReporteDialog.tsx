@@ -129,7 +129,6 @@ export default function GenerarReporteDialog({ open, onClose, puestos, clienteId
 
     setGenerando(true);
     try {
-      // Build rows from selections
       const rows = seleccionados.map(([puestoId, puestoTipoId], idx) => {
         const sims = similitudesPorPuesto[puestoId] || [];
         const selected = sims.find((s) => s.puestoTipo.id === puestoTipoId);
@@ -140,22 +139,74 @@ export default function GenerarReporteDialog({ open, onClose, puestos, clienteId
         };
       });
 
-      const sheetData = [
-        ["#", "Área", "Puesto", "25P", "50P", "Promedio", "75P", "Varianza en mercado"],
-        ...rows.map((r) => [r.num, r.area, r.puesto, "", "", "", "", ""]),
-      ];
+      // Fetch the template
+      const resp = await fetch("/templates/reporte_template.xlsx");
+      const templateBuf = await resp.arrayBuffer();
+      const wb = XLSX.read(templateBuf, { cellStyles: true });
 
-      const wb = XLSX.utils.book_new();
-      const ws1 = XLSX.utils.aoa_to_sheet(sheetData);
-      const ws2 = XLSX.utils.aoa_to_sheet(sheetData);
+      // --- Sheet 1: COMPETITIVIDAD ---
+      const ws1 = wb.Sheets[wb.SheetNames[0]];
+      const SHEET1_DATA_START = 23; // row 23 in template (1-indexed)
+      const SHEET1_EXAMPLE_ROWS = 20;
 
-      // Set column widths
-      const colWidths = [5, 20, 30, 10, 10, 12, 10, 18].map((w) => ({ wch: w }));
-      ws1["!cols"] = colWidths;
-      ws2["!cols"] = colWidths;
+      // Clear example data rows (B23:I42)
+      for (let r = SHEET1_DATA_START; r < SHEET1_DATA_START + SHEET1_EXAMPLE_ROWS; r++) {
+        const cols = ["B", "C", "D", "E", "F", "G", "H", "I"];
+        cols.forEach((c) => {
+          const addr = `${c}${r}`;
+          if (ws1[addr]) delete ws1[addr];
+        });
+      }
 
-      XLSX.utils.book_append_sheet(wb, ws1, "Hoja 1");
-      XLSX.utils.book_append_sheet(wb, ws2, "Hoja 2");
+      // Write selected rows
+      rows.forEach((row, i) => {
+        const r = SHEET1_DATA_START + i;
+        ws1[`B${r}`] = { t: "n", v: row.num };
+        ws1[`C${r}`] = { t: "s", v: row.area };
+        ws1[`D${r}`] = { t: "s", v: row.puesto };
+        // E-I left empty for now (25P, 50P, Promedio, 75P, Varianza)
+      });
+
+      // Update sheet range
+      const sheet1LastRow = SHEET1_DATA_START + rows.length - 1;
+      if (ws1["!ref"]) {
+        const ref = XLSX.utils.decode_range(ws1["!ref"]);
+        ref.e.r = Math.max(ref.e.r, sheet1LastRow - 1);
+        ws1["!ref"] = XLSX.utils.encode_range(ref);
+      }
+
+      // --- Sheet 2: COMPENSACIÓN TOTAL ---
+      const ws2 = wb.Sheets[wb.SheetNames[1]];
+      
+      // Clear summary table (rows 56-75, cols B-H)
+      for (let r = 56; r <= 75; r++) {
+        ["B", "C", "D", "E", "F", "G", "H"].forEach((c) => {
+          const addr = `${c}${r}`;
+          if (ws2[addr]) delete ws2[addr];
+        });
+      }
+      // Write summary rows
+      rows.forEach((row, i) => {
+        const r = 56 + i;
+        ws2[`B${r}`] = { t: "n", v: row.num };
+        ws2[`C${r}`] = { t: "s", v: row.area };
+        ws2[`D${r}`] = { t: "s", v: row.puesto };
+      });
+
+      // Clear detail table (rows 87-106, cols B-P)
+      for (let r = 87; r <= 106; r++) {
+        ["B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P"].forEach((c) => {
+          const addr = `${c}${r}`;
+          if (ws2[addr]) delete ws2[addr];
+        });
+      }
+      // Write detail rows
+      rows.forEach((row, i) => {
+        const r = 87 + i;
+        ws2[`B${r}`] = { t: "n", v: row.num };
+        ws2[`C${r}`] = { t: "s", v: row.area };
+        ws2[`D${r}`] = { t: "s", v: row.puesto };
+      });
 
       const xlsxBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
       const blob = new Blob([xlsxBuffer], {
@@ -163,12 +214,7 @@ export default function GenerarReporteDialog({ open, onClose, puestos, clienteId
       });
 
       const fileName = `Reporte - ${clienteNombre}.xlsx`;
-      await uploadReporteExcel({
-        clienteId,
-        clienteNombre,
-        fileName,
-        excelBlob: blob,
-      });
+      await uploadReporteExcel({ clienteId, clienteNombre, fileName, excelBlob: blob });
       triggerBlobDownload(blob, fileName);
       toast.success("Reporte generado y guardado.");
       onClose();
