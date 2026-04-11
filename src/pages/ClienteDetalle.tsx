@@ -44,6 +44,7 @@ import {
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Pencil, Search, Upload } from "lucide-react";
 import SimilitudDialog from "@/components/SimilitudDialog";
+import GenerarReporteDialog from "@/components/GenerarReporteDialog";
 import { buildReporteGeneralPptx, type Similitud as SimilitudIA, type PuestoTipo as PuestoTipoIA } from "@/lib/reports/pptx";
 import { uploadReportePptx, triggerBlobDownload } from "@/lib/reports/storage";
 
@@ -64,6 +65,7 @@ export default function ClienteDetalle() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [similitudPuesto, setSimilitudPuesto] = useState<Puesto | null>(null);
+  const [reporteDialogOpen, setReporteDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [generandoGeneral, setGenerandoGeneral] = useState(false);
 
@@ -276,6 +278,9 @@ export default function ClienteDetalle() {
         <Button onClick={handleGenerarReporteGeneral} disabled={generandoGeneral} variant="secondary">
           {generandoGeneral ? "Generando…" : "Generar Comparativa"}
         </Button>
+        <Button onClick={() => setReporteDialogOpen(true)} variant="outline">
+          Generar Reporte
+        </Button>
       </div>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -358,6 +363,14 @@ export default function ClienteDetalle() {
           onClose={() => setSimilitudPuesto(null)}
         />
       )}
+
+      <GenerarReporteDialog
+        open={reporteDialogOpen}
+        onClose={() => setReporteDialogOpen(false)}
+        puestos={puestos}
+        clienteId={clienteId!}
+        clienteNombre={clienteNombre}
+      />
     </div>
   );
 }

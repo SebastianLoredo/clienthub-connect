@@ -1,4 +1,4 @@
-import { Users, Briefcase, FileText, LogOut } from "lucide-react";
+import { Users, Briefcase, FileText, FileSpreadsheet, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,7 +19,8 @@ import { Button } from "@/components/ui/button";
 const items = [
   { title: "Mis Clientes", url: "/dashboard/clientes", icon: Users },
   { title: "Puestos Tipo", url: "/dashboard/puestos-tipo", icon: Briefcase },
-  { title: "Comparativas", url: "/dashboard/reportes", icon: FileText },
+  { title: "Comparativas", url: "/dashboard/comparativas", icon: FileText },
+  { title: "Reportes", url: "/dashboard/reportes", icon: FileSpreadsheet },
 ];
 
 export function AppSidebar() {
