@@ -56,9 +56,37 @@ export function triggerBlobDownload(blob: Blob, fileName: string) {
   URL.revokeObjectURL(url);
 }
 
-export async function deleteReporte(clienteId: string, reporteId: string, storagePath: string | null) {
+export async function deleteReporte(clienteId: string, reporteId: string, storagePath: string | null, subcollection = "reportes") {
   if (storagePath) {
     await supabase.storage.from("reportes").remove([storagePath]);
   }
-  await deleteDoc(doc(db, "clientes", clienteId, "reportes", reporteId));
+  await deleteDoc(doc(db, "clientes", clienteId, subcollection, reporteId));
+}
+
+export async function uploadReporteExcel(params: {
+  clienteId: string;
+  clienteNombre: string;
+  fileName: string;
+  excelBlob: Blob;
+}) {
+  const { clienteId, clienteNombre, fileName, excelBlob } = params;
+
+  const storagePath = `${clienteId}/${Date.now()}-${fileName}`;
+  const { error: uploadError } = await supabase.storage
+    .from("reportes")
+    .upload(storagePath, excelBlob, {
+      contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+  if (uploadError) throw uploadError;
+
+  const reportesCol = collection(db, "clientes", clienteId, "reportes_excel");
+  await addDoc(reportesCol, {
+    type: "excel",
+    fileName,
+    clienteNombre,
+    storagePath,
+    createdAt: serverTimestamp(),
+  });
+
+  return { storagePath };
 }
