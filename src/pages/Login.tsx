@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Lock, Mail } from "lucide-react";
+import totumLogo from "@/assets/totumlogo.jpg";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -32,6 +33,7 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-muted">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
+          <img src={totumLogo} alt="Totum Logo" className="mx-auto mb-4 h-16 w-auto" />
           <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>
           <p className="text-sm text-muted-foreground">Ingresa tus credenciales para acceder</p>
         </CardHeader>
