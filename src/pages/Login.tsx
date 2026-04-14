@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Lock, Mail } from "lucide-react";
+import totumLogo from "@/assets/totumlogo.jpg";
 
 export default function Login() {
   const [email, setEmail] = useState("");
