@@ -2,12 +2,14 @@ import { Users, Briefcase, FileText, FileSpreadsheet, LogOut } from "lucide-reac
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import totumLogo from "@/assets/totumlogo.png";
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -31,6 +33,13 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
+      <SidebarHeader className="flex items-center justify-center p-4">
+        <img
+          src={totumLogo}
+          alt="Totum Talent"
+          className={collapsed ? "h-8 w-8 object-contain" : "h-10 w-auto object-contain"}
+        />
+      </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>
