@@ -33,6 +33,13 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
+      <SidebarHeader className="flex items-center justify-center p-4">
+        <img
+          src={totumLogo}
+          alt="Totum Talent"
+          className={collapsed ? "h-8 w-8 object-contain" : "h-10 w-auto object-contain"}
+        />
+      </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>
