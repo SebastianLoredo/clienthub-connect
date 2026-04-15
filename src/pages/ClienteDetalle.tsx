@@ -140,18 +140,16 @@ export default function ClienteDetalle() {
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
-        if (data.puestos && Array.isArray(data.puestos)) {
-          for (const p of data.puestos) {
-            await addDoc(collection(db, "clientes", clienteId, "puestos"), {
-              nombre: p.nombre || "",
-              area: p.area || "",
-              descripcion: p.descripcion || "",
-              tecnologias: p.tecnologias || "",
-            });
-          }
-          toast.success(`${data.puestos.length} puestos extraídos del PDF`);
+        if (data?.nombre) {
+          await addDoc(collection(db, "clientes", clienteId, "puestos"), {
+            nombre: data.nombre || "",
+            area: data.area || "",
+            descripcion: data.descripcion || "",
+            tecnologias: data.tecnologias || "",
+          });
+          toast.success("Puesto extraído del PDF");
         } else {
-          toast.warning("No se encontraron puestos en el PDF");
+          toast.warning("No se encontró información del puesto en el PDF");
         }
       } catch {
         toast.error("Error al procesar el PDF. Asegúrate de tener configurada la función de extracción.");

@@ -1,13 +1,15 @@
-import { Users, Briefcase, FileText, FileSpreadsheet, LogOut } from "lucide-react";
+import { Users, Briefcase, FileText, FileSpreadsheet, LogOut, UserCog } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import totumLogo from "@/assets/totumlogo.png";
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -31,6 +33,13 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
+      <SidebarHeader className="flex items-center justify-center p-4">
+        <img
+          src={totumLogo}
+          alt="Totum Talent"
+          className={collapsed ? "h-8 w-8 object-contain" : "h-10 w-auto object-contain"}
+        />
+      </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>
@@ -53,6 +62,12 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              <SidebarMenuItem>
+                <SidebarMenuButton disabled className="opacity-50 cursor-default">
+                  <UserCog className="mr-2 h-4 w-4" />
+                  {!collapsed && <span>Usuarios</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
