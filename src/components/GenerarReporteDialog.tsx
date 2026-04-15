@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { supabase } from "@/integrations/supabase/client";
-import * as XLSX from "xlsx";
+import * as ExcelJS from "exceljs";
 import {
   Dialog,
   DialogContent,
@@ -139,77 +139,73 @@ export default function GenerarReporteDialog({ open, onClose, puestos, clienteId
         };
       });
 
-      // Fetch the template
+      // Load template
       const resp = await fetch("/templates/reporte_template.xlsx");
       const templateBuf = await resp.arrayBuffer();
-      const wb = XLSX.read(templateBuf, { cellStyles: true });
+      
+      // Create new ExcelJS workbook
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(templateBuf);
 
       // --- Sheet 1: COMPETITIVIDAD ---
-      const ws1 = wb.Sheets[wb.SheetNames[0]];
+      const worksheet1 = workbook.getWorksheet('COMPETITIVIDAD');
       const SHEET1_DATA_START = 23; // row 23 in template (1-indexed)
       const SHEET1_EXAMPLE_ROWS = 20;
 
-      // Clear example data rows (B23:I42)
+      // Clear example data rows (B23:I42) and write selected rows
       for (let r = SHEET1_DATA_START; r < SHEET1_DATA_START + SHEET1_EXAMPLE_ROWS; r++) {
         const cols = ["B", "C", "D", "E", "F", "G", "H", "I"];
         cols.forEach((c) => {
-          const addr = `${c}${r}`;
-          if (ws1[addr]) delete ws1[addr];
+          const cell = worksheet1.getCell(`${c}${r}`);
+          cell.value = null;
         });
       }
 
       // Write selected rows
       rows.forEach((row, i) => {
         const r = SHEET1_DATA_START + i;
-        ws1[`B${r}`] = { t: "n", v: row.num };
-        ws1[`C${r}`] = { t: "s", v: row.area };
-        ws1[`D${r}`] = { t: "s", v: row.puesto };
+        worksheet1.getCell(`B${r}`).value = row.num;
+        worksheet1.getCell(`C${r}`).value = row.area;
+        worksheet1.getCell(`D${r}`).value = row.puesto;
         // E-I left empty for now (25P, 50P, Promedio, 75P, Varianza)
       });
 
-      // Update sheet range
-      const sheet1LastRow = SHEET1_DATA_START + rows.length - 1;
-      if (ws1["!ref"]) {
-        const ref = XLSX.utils.decode_range(ws1["!ref"]);
-        ref.e.r = Math.max(ref.e.r, sheet1LastRow - 1);
-        ws1["!ref"] = XLSX.utils.encode_range(ref);
-      }
-
       // --- Sheet 2: COMPENSACIÓN TOTAL ---
-      const ws2 = wb.Sheets[wb.SheetNames[1]];
+      const worksheet2 = workbook.getWorksheet('COMPENSACIÓN TOTAL');
       
       // Clear summary table (rows 56-75, cols B-H)
       for (let r = 56; r <= 75; r++) {
         ["B", "C", "D", "E", "F", "G", "H"].forEach((c) => {
-          const addr = `${c}${r}`;
-          if (ws2[addr]) delete ws2[addr];
+          const cell = worksheet2.getCell(`${c}${r}`);
+          cell.value = null;
         });
       }
       // Write summary rows
       rows.forEach((row, i) => {
         const r = 56 + i;
-        ws2[`B${r}`] = { t: "n", v: row.num };
-        ws2[`C${r}`] = { t: "s", v: row.area };
-        ws2[`D${r}`] = { t: "s", v: row.puesto };
+        worksheet2.getCell(`B${r}`).value = row.num;
+        worksheet2.getCell(`C${r}`).value = row.area;
+        worksheet2.getCell(`D${r}`).value = row.puesto;
       });
 
       // Clear detail table (rows 87-106, cols B-P)
       for (let r = 87; r <= 106; r++) {
         ["B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P"].forEach((c) => {
-          const addr = `${c}${r}`;
-          if (ws2[addr]) delete ws2[addr];
+          const cell = worksheet2.getCell(`${c}${r}`);
+          cell.value = null;
         });
       }
       // Write detail rows
       rows.forEach((row, i) => {
         const r = 87 + i;
-        ws2[`B${r}`] = { t: "n", v: row.num };
-        ws2[`C${r}`] = { t: "s", v: row.area };
-        ws2[`D${r}`] = { t: "s", v: row.puesto };
+        worksheet2.getCell(`B${r}`).value = row.num;
+        worksheet2.getCell(`C${r}`).value = row.area;
+        worksheet2.getCell(`D${r}`).value = row.puesto;
       });
 
-      const xlsxBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-      const blob = new Blob([xlsxBuffer], {
+      // Generate Excel buffer using ExcelJS
+      const excelBuffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([excelBuffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
 
