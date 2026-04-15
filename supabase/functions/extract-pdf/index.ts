@@ -21,24 +21,6 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    // Decode base64 PDF to extract text
-    const pdfBytes = Uint8Array.from(atob(pdf), (c) => c.charCodeAt(0));
-    const textContent = new TextDecoder("utf-8", { fatal: false }).decode(pdfBytes);
-
-    // Clean up the text - extract readable portions
-    const cleanText = textContent
-      .replace(/[^\x20-\x7E\xA0-\xFF\n\r\t]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 8000);
-
-    const prompt = `Analiza el siguiente contenido extraído de un PDF que contiene descripciones de puestos de trabajo. Extrae todos los puestos que encuentres.
-
-CONTENIDO DEL PDF:
-${cleanText}
-
-Extrae los puestos usando la función proporcionada. Si no encuentras puestos claros, intenta inferir la información del contenido disponible.`;
-
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -48,40 +30,45 @@ Extrae los puestos usando la función proporcionada. Si no encuentras puestos cl
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          { role: "system", content: "Eres un experto en extracción de información de documentos de recursos humanos." },
-          { role: "user", content: prompt },
+          {
+            role: "system",
+            content: "Eres un experto en extracción de información de descripciones de puestos de trabajo (Job Descriptions). Cada PDF que recibes contiene EXACTAMENTE UNA SOLA posición de trabajo. NUNCA inventes ni alucines información que no esté en el documento. Si un campo no está presente en el PDF, devuelve una cadena vacía para ese campo.",
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Este PDF contiene UNA SOLA posición/puesto de trabajo. Extrae la información de esa única posición usando la función proporcionada. NO inventes puestos adicionales. Solo extrae lo que está explícitamente en el documento.",
+              },
+              {
+                type: "image_url",
+                image_url: { url: `data:application/pdf;base64,${pdf}` },
+              },
+            ],
+          },
         ],
         tools: [
           {
             type: "function",
             function: {
-              name: "extraer_puestos",
-              description: "Extraer puestos de trabajo del contenido del PDF",
+              name: "extraer_puesto",
+              description: "Extraer la información del único puesto de trabajo descrito en el PDF",
               parameters: {
                 type: "object",
                 properties: {
-                  puestos: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        nombre: { type: "string", description: "Nombre del puesto" },
-                        area: { type: "string", description: "Área o departamento" },
-                        descripcion: { type: "string", description: "Descripción del puesto" },
-                        tecnologias: { type: "string", description: "Tecnologías o herramientas mencionadas" },
-                      },
-                      required: ["nombre", "area", "descripcion", "tecnologias"],
-                      additionalProperties: false,
-                    },
-                  },
+                  nombre: { type: "string", description: "Nombre del puesto de trabajo" },
+                  area: { type: "string", description: "Área o departamento al que pertenece" },
+                  descripcion: { type: "string", description: "Descripción general del puesto, objetivo y responsabilidades principales" },
+                  tecnologias: { type: "string", description: "Tecnologías, herramientas o conocimientos técnicos mencionados" },
                 },
-                required: ["puestos"],
+                required: ["nombre", "area", "descripcion", "tecnologias"],
                 additionalProperties: false,
               },
             },
           },
         ],
-        tool_choice: { type: "function", function: { name: "extraer_puestos" } },
+        tool_choice: { type: "function", function: { name: "extraer_puesto" } },
       }),
     });
 
