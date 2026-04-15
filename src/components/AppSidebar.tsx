@@ -62,6 +62,12 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              <SidebarMenuItem>
+                <SidebarMenuButton disabled className="opacity-50 cursor-default">
+                  <UserCog className="mr-2 h-4 w-4" />
+                  {!collapsed && <span>Usuarios</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
