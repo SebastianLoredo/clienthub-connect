@@ -1,4 +1,4 @@
-import { Users, Briefcase, FileText, FileSpreadsheet, LogOut } from "lucide-react";
+import { Users, Briefcase, FileText, FileSpreadsheet, LogOut, UserCog } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -62,6 +62,12 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              <SidebarMenuItem>
+                <SidebarMenuButton disabled className="opacity-50 cursor-default">
+                  <UserCog className="mr-2 h-4 w-4" />
+                  {!collapsed && <span>Usuarios</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
