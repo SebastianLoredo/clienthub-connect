@@ -2,12 +2,14 @@ import { Users, Briefcase, FileText, FileSpreadsheet, LogOut } from "lucide-reac
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import totumLogo from "@/assets/totumlogo.png";
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
