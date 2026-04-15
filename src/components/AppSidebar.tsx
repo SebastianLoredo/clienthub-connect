@@ -1,4 +1,4 @@
-import { Users, Briefcase, FileText, FileSpreadsheet, LogOut } from "lucide-react";
+import { Users, Briefcase, FileText, FileSpreadsheet, LogOut, UserCog } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
