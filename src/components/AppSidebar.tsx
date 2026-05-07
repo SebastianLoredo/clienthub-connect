@@ -23,13 +23,6 @@ const items = [
   { title: "Puestos Tipo", url: "/dashboard/puestos-tipo", icon: Briefcase },
   { title: "Comparativas", url: "/dashboard/comparativas", icon: FileText },
   { title: "Reportes", url: "/dashboard/reportes", icon: FileSpreadsheet },
-];
-
-const items = [
-  { title: "Mis Clientes", url: "/dashboard/clientes", icon: Users },
-  { title: "Puestos Tipo", url: "/dashboard/puestos-tipo", icon: Briefcase },
-  { title: "Comparativas", url: "/dashboard/comparativas", icon: FileText },
-  { title: "Reportes", url: "/dashboard/reportes", icon: FileSpreadsheet },
   { title: "Usuarios", url: "/dashboard/usuarios", icon: UserCog },
 ];
 
