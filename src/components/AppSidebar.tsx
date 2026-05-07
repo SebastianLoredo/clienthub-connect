@@ -25,11 +25,20 @@ const items = [
   { title: "Reportes", url: "/dashboard/reportes", icon: FileSpreadsheet },
 ];
 
+const items = [
+  { title: "Mis Clientes", url: "/dashboard/clientes", icon: Users },
+  { title: "Puestos Tipo", url: "/dashboard/puestos-tipo", icon: Briefcase },
+  { title: "Comparativas", url: "/dashboard/comparativas", icon: FileText },
+  { title: "Reportes", url: "/dashboard/reportes", icon: FileSpreadsheet },
+  { title: "Usuarios", url: "/dashboard/usuarios", icon: UserCog },
+];
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const nombre = user?.displayName || user?.email?.split("@")[0] || "";
 
   return (
     <Sidebar collapsible="icon">
