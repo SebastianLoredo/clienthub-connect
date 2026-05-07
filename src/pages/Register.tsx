@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Lock, Mail, UserPlus, User } from "lucide-react";
 
 export default function Register() {
+  const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
