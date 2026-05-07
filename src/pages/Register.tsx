@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Lock, Mail, UserPlus } from "lucide-react";
+import { Lock, Mail, UserPlus, User } from "lucide-react";
 
 export default function Register() {
   const [email, setEmail] = useState("");
