@@ -32,7 +32,7 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await register(email, password);
+      await register(email, password, nombre);
       toast.success("Cuenta creada exitosamente.");
       navigate("/dashboard/clientes");
     } catch (err: any) {
