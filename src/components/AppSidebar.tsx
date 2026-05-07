@@ -23,13 +23,15 @@ const items = [
   { title: "Puestos Tipo", url: "/dashboard/puestos-tipo", icon: Briefcase },
   { title: "Comparativas", url: "/dashboard/comparativas", icon: FileText },
   { title: "Reportes", url: "/dashboard/reportes", icon: FileSpreadsheet },
+  { title: "Usuarios", url: "/dashboard/usuarios", icon: UserCog },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const nombre = user?.displayName || user?.email?.split("@")[0] || "";
 
   return (
     <Sidebar collapsible="icon">
@@ -41,6 +43,11 @@ export function AppSidebar() {
         />
       </SidebarHeader>
       <SidebarContent>
+        {!collapsed && nombre && (
+          <div className="px-3 pt-2 pb-1 text-sm font-medium text-sidebar-foreground">
+            Hola {nombre}
+          </div>
+        )}
         <SidebarGroup>
           <SidebarGroupLabel>
             {!collapsed && "Menú Principal"}
@@ -62,12 +69,6 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-              <SidebarMenuItem>
-                <SidebarMenuButton disabled className="opacity-50 cursor-default">
-                  <UserCog className="mr-2 h-4 w-4" />
-                  {!collapsed && <span>Usuarios</span>}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
