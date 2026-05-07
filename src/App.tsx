@@ -35,6 +35,7 @@ const App = () => (
               <Route path="puestos-tipo" element={<PuestosTipo />} />
               <Route path="comparativas" element={<Reportes />} />
               <Route path="reportes" element={<ReportesExcel />} />
+              <Route path="usuarios" element={<Usuarios />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
