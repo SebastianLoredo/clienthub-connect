@@ -13,6 +13,7 @@ import ClienteDetalle from "./pages/ClienteDetalle";
 import PuestosTipo from "./pages/PuestosTipo";
 import Reportes from "./pages/Reportes";
 import ReportesExcel from "./pages/ReportesExcel";
+import Usuarios from "./pages/Usuarios";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
