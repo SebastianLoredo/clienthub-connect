@@ -1,67 +1,24 @@
 
+El usuario pregunta sobre los límites de uso de Gemini en Lovable. Esto es una pregunta de información, no requiere cambios de código. Respondo directamente sin plan.
 
-## Plan: Mejorar extracción de PDF — 1 puesto por PDF
+## Respuesta sobre cupos de uso de Lovable AI (Gemini)
 
-### Problemas actuales
-1. **Extracción de texto basura**: Se decodifica el PDF como UTF-8 crudo, lo que produce texto ilegible (el formato binario de PDF no es texto plano).
-2. **Prompt pide múltiples puestos**: Dice "extrae todos los puestos que encuentres", lo que causa que la IA alucine puestos inventados.
-3. **Schema permite array**: La tool function devuelve un array de puestos, incentivando múltiples resultados.
+**Modelos Gemini gratis hasta el 6 de enero de 2026:**
+Durante este periodo promocional, todos los modelos `google/gemini-*` (incluyendo `gemini-3-flash-preview`, `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`) son **gratuitos** en Lovable AI Gateway. No consumen del balance de AI.
 
-### Cambios propuestos
+**Después del 6 de enero de 2026 (o para modelos OpenAI):**
+- Cada workspace recibe **$1 USD gratis de balance de AI** por mes.
+- Una vez agotado, se debe recargar en **Settings → Workspace → Cloud & AI balance** (solo planes pagos pueden recargar).
+- Los modelos OpenAI (GPT-5, GPT-5-mini, etc.) **sí consumen** balance desde el inicio.
 
-**1. Edge function `extract-pdf/index.ts` — Usar el modelo multimodal con el PDF directamente**
+**Rate limits (límites por minuto):**
+- Hay un límite de requests por minuto por workspace.
+- Si se excede → error **429 Too Many Requests** (esperar y reintentar).
+- Si se acaban créditos → error **402 Payment Required**.
+- Tu edge function `extract-pdf` y `buscar-similitudes` ya manejan ambos errores correctamente.
 
-En vez de intentar parsear el PDF como texto, enviar el PDF en base64 como imagen/documento al modelo Gemini (que soporta PDFs nativamente via content parts). Esto elimina el problema de texto basura.
+**En tu proyecto:**
+Estás usando `google/gemini-3-flash-preview` en ambas edge functions, así que actualmente estás en el periodo **gratuito** hasta enero 2026.
 
-**2. Cambiar prompt y schema a 1 solo puesto**
-
-- Nuevo system prompt: Enfatizar que el PDF contiene exactamente 1 posición/puesto.
-- Nuevo user prompt: "Este PDF describe UNA SOLA posición de trabajo. Extrae la información de esa única posición."
-- Cambiar el schema de `puestos: array` a un objeto plano con los campos: `nombre`, `area`, `descripcion`, `tecnologias`.
-
-**3. Actualizar `ClienteDetalle.tsx` — Ajustar el handler del resultado**
-
-- En vez de iterar sobre `data.puestos` (array), tomar el objeto único devuelto y crear 1 solo documento en Firestore.
-- Mensaje de éxito: "Puesto extraído del PDF" (singular).
-
-### Detalle técnico
-
-**Edge function** — enviar PDF como content part multimodal:
-```typescript
-// Enviar el base64 como inline_data al modelo
-messages: [
-  { role: "system", content: "Eres un experto en extracción de JDs..." },
-  { role: "user", content: [
-    { type: "text", text: "Este PDF contiene UNA SOLA posición..." },
-    { type: "image_url", url: `data:application/pdf;base64,${pdf}` }
-  ]}
-]
-```
-
-**Tool schema** — objeto singular:
-```json
-{
-  "name": "extraer_puesto",
-  "parameters": {
-    "properties": {
-      "nombre": { "type": "string" },
-      "area": { "type": "string" },
-      "descripcion": { "type": "string" },
-      "tecnologias": { "type": "string" }
-    }
-  }
-}
-```
-
-**Frontend** — resultado singular:
-```typescript
-if (data?.nombre) {
-  await addDoc(..., { nombre: data.nombre, area: data.area, ... });
-  toast.success("Puesto extraído del PDF");
-}
-```
-
-### Archivos a modificar
-- `supabase/functions/extract-pdf/index.ts` — reescribir extracción y prompt
-- `src/pages/ClienteDetalle.tsx` — ajustar handler de resultado (líneas ~137-155)
+**Documentación oficial:** https://docs.lovable.dev/features/ai
 
