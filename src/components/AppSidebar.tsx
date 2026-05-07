@@ -43,6 +43,11 @@ export function AppSidebar() {
         />
       </SidebarHeader>
       <SidebarContent>
+        {!collapsed && nombre && (
+          <div className="px-3 pt-2 pb-1 text-sm font-medium text-sidebar-foreground">
+            Hola {nombre}
+          </div>
+        )}
         <SidebarGroup>
           <SidebarGroupLabel>
             {!collapsed && "Menú Principal"}
@@ -64,12 +69,6 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-              <SidebarMenuItem>
-                <SidebarMenuButton disabled className="opacity-50 cursor-default">
-                  <UserCog className="mr-2 h-4 w-4" />
-                  {!collapsed && <span>Usuarios</span>}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
