@@ -47,6 +47,7 @@ import SimilitudDialog from "@/components/SimilitudDialog";
 import GenerarReporteDialog from "@/components/GenerarReporteDialog";
 import { buildReporteGeneralPptx, type Similitud as SimilitudIA, type PuestoTipo as PuestoTipoIA } from "@/lib/reports/pptx";
 import { uploadReportePptx, triggerBlobDownload } from "@/lib/reports/storage";
+import { logAudit } from "@/lib/audit";
 
 interface Puesto {
   id: string;
@@ -141,12 +142,13 @@ export default function ClienteDetalle() {
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
         if (data?.nombre) {
-          await addDoc(collection(db, "clientes", clienteId, "puestos"), {
+          const ref = await addDoc(collection(db, "clientes", clienteId, "puestos"), {
             nombre: data.nombre || "",
             area: data.area || "",
             descripcion: data.descripcion || "",
             tecnologias: data.tecnologias || "",
           });
+          void logAudit("puesto_pdf_extract", { clienteId, puestoId: ref.id, nombre: data.nombre, fileName: file.name });
           toast.success("Puesto extraído del PDF");
         } else {
           toast.warning("No se encontró información del puesto en el PDF");
@@ -211,6 +213,7 @@ export default function ClienteDetalle() {
         pptxBlob: blob,
       });
       triggerBlobDownload(blob, fileName);
+      void logAudit("reporte_general_generate", { clienteId, clienteNombre, totalPuestos: puestos.length, fileName });
       toast.success("Reporte general generado.");
     } catch (e) {
       console.error("Error generando reporte general:", e);
