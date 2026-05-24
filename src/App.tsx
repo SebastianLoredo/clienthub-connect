@@ -14,6 +14,7 @@ import PuestosTipo from "./pages/PuestosTipo";
 import Reportes from "./pages/Reportes";
 import ReportesExcel from "./pages/ReportesExcel";
 import Usuarios from "./pages/Usuarios";
+import AdminLogs from "./pages/AdminLogs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="comparativas" element={<Reportes />} />
               <Route path="reportes" element={<ReportesExcel />} />
               <Route path="usuarios" element={<Usuarios />} />
+              <Route path="admin/logs" element={<AdminLogs />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

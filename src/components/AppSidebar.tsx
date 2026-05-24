@@ -1,4 +1,4 @@
-import { Users, Briefcase, FileText, FileSpreadsheet, LogOut, UserCog } from "lucide-react";
+import { Users, Briefcase, FileText, FileSpreadsheet, LogOut, UserCog, ShieldAlert } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,12 +26,17 @@ const items = [
   { title: "Usuarios", url: "/dashboard/usuarios", icon: UserCog },
 ];
 
+const adminItems = [
+  { title: "Logs de Auditoría", url: "/dashboard/admin/logs", icon: ShieldAlert },
+];
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const nombre = user?.displayName || user?.email?.split("@")[0] || "";
+  const visibleItems = isAdmin ? [...items, ...adminItems] : items;
 
   return (
     <Sidebar collapsible="icon">
@@ -54,7 +59,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
+              {visibleItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink
