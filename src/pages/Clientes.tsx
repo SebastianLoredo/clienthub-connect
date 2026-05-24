@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil } from "lucide-react";
+import { logAudit } from "@/lib/audit";
 
 interface Cliente {
   id: string;
@@ -65,10 +66,11 @@ export default function Clientes() {
   const handleAdd = async () => {
     if (!nombre.trim()) return;
     try {
-      await addDoc(collection(db, "clientes"), {
+      const ref = await addDoc(collection(db, "clientes"), {
         nombre: nombre.trim(),
         createdAt: new Date(),
       });
+      void logAudit("cliente_create", { clienteId: ref.id, nombre: nombre.trim() });
       setNombre("");
       setDialogOpen(false);
       toast.success("Cliente creado exitosamente");
@@ -80,7 +82,9 @@ export default function Clientes() {
 
   const handleDelete = async (id: string) => {
     try {
+      const target = clientes.find((c) => c.id === id);
       await deleteDoc(doc(db, "clientes", id));
+      void logAudit("cliente_delete", { clienteId: id, nombre: target?.nombre });
       toast.success("Cliente eliminado");
     } catch (err) {
       const code = err instanceof FirebaseError ? err.code : "unknown";
@@ -92,6 +96,7 @@ export default function Clientes() {
     if (!editId || !editNombre.trim()) return;
     try {
       await updateDoc(doc(db, "clientes", editId), { nombre: editNombre.trim() });
+      void logAudit("cliente_update", { clienteId: editId, nombre: editNombre.trim() });
       setEditDialogOpen(false);
       setEditId(null);
       toast.success("Cliente actualizado");

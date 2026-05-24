@@ -51,6 +51,7 @@ import {
   type PuestoTipoImportRow,
 } from "@/lib/parsePuestosTipoExcel";
 import { cn } from "@/lib/utils";
+import { logAudit } from "@/lib/audit";
 
 /** Comparación de códigos para duplicados (trim + minúsculas). */
 function normalizeCodigo(c: string): string {
@@ -136,7 +137,8 @@ export default function PuestosTipo() {
   const handleAdd = async () => {
     if (!form.puesto.trim()) return;
     try {
-      await addDoc(collection(db, "puestos_tipo"), form);
+      const ref = await addDoc(collection(db, "puestos_tipo"), form);
+      void logAudit("puesto_tipo_create", { id: ref.id, puesto: form.puesto, codigo: form.codigo });
       setForm(emptyForm);
       setDialogOpen(false);
       toast.success("Puesto tipo creado");
@@ -149,6 +151,7 @@ export default function PuestosTipo() {
     if (!editId) return;
     try {
       await updateDoc(doc(db, "puestos_tipo", editId), form);
+      void logAudit("puesto_tipo_update", { id: editId, puesto: form.puesto, codigo: form.codigo });
       setEditDialogOpen(false);
       setEditId(null);
       setForm(emptyForm);
@@ -160,7 +163,9 @@ export default function PuestosTipo() {
 
   const handleDelete = async (id: string) => {
     try {
+      const target = puestos.find((p) => p.id === id);
       await deleteDoc(doc(db, "puestos_tipo", id));
+      void logAudit("puesto_tipo_delete", { id, puesto: target?.puesto, codigo: target?.codigo });
       toast.success("Puesto eliminado");
     } catch {
       toast.error("Error al eliminar");
@@ -287,6 +292,7 @@ export default function PuestosTipo() {
       } else {
         toast.success(`${toSave.length} puesto(s) tipo guardados en la base de datos.`);
       }
+      void logAudit("puesto_tipo_bulk_import", { guardados: toSave.length, omitidos: skipped });
       setExcelImportOpen(false);
       setExcelRows([]);
     } catch {
