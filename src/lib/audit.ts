@@ -19,7 +19,8 @@ export type AuditAction =
   | "puesto_tipo_bulk_import"
   | "reporte_general_generate"
   | "reporte_individual_generate"
-  | "similitud_buscar";
+  | "similitud_buscar"
+  | "user_role_change";
 
 export async function logAudit(
   action: AuditAction,
