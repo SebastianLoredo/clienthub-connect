@@ -1,24 +1,30 @@
+## Plan: Lista de usuarios para administradores
 
-El usuario pregunta sobre los límites de uso de Gemini en Lovable. Esto es una pregunta de información, no requiere cambios de código. Respondo directamente sin plan.
+### Situación actual
+- La página `/dashboard/usuarios` solo muestra el perfil del usuario logueado (editar nombre).
+- No existe ninguna vista donde el admin pueda ver todos los usuarios registrados.
+- Los usuarios ya se guardan en la colección `users` de Firestore (uid, email, displayName, role, createdAt) — creada por `ensureUserDoc` en `AuthContext`.
 
-## Respuesta sobre cupos de uso de Lovable AI (Gemini)
+### Propuesta
+Convertir `/dashboard/usuarios` en una página con dos comportamientos según el rol:
 
-**Modelos Gemini gratis hasta el 6 de enero de 2026:**
-Durante este periodo promocional, todos los modelos `google/gemini-*` (incluyendo `gemini-3-flash-preview`, `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`) son **gratuitos** en Lovable AI Gateway. No consumen del balance de AI.
+**Si el usuario es admin:**
+- Mostrar arriba la sección "Mi perfil" (igual que hoy: editar nombre).
+- Debajo, una tarjeta **"Todos los usuarios"** con una tabla:
+  - Columnas: Nombre · Correo · Rol · Fecha de registro
+  - Buscador por nombre/correo
+  - Selector de rol por fila (`user` / `admin`) que actualiza el campo `role` en `users/{uid}` en Firestore
+  - El admin no puede degradarse a sí mismo (selector deshabilitado en su propia fila para evitar quedarse sin admin)
+  - Cada cambio de rol registra un `logAudit("user_role_change", { targetEmail, newRole })`
 
-**Después del 6 de enero de 2026 (o para modelos OpenAI):**
-- Cada workspace recibe **$1 USD gratis de balance de AI** por mes.
-- Una vez agotado, se debe recargar en **Settings → Workspace → Cloud & AI balance** (solo planes pagos pueden recargar).
-- Los modelos OpenAI (GPT-5, GPT-5-mini, etc.) **sí consumen** balance desde el inicio.
+**Si el usuario NO es admin:**
+- Solo ve "Mi perfil" (comportamiento actual, sin cambios).
 
-**Rate limits (límites por minuto):**
-- Hay un límite de requests por minuto por workspace.
-- Si se excede → error **429 Too Many Requests** (esperar y reintentar).
-- Si se acaban créditos → error **402 Payment Required**.
-- Tu edge function `extract-pdf` y `buscar-similitudes` ya manejan ambos errores correctamente.
+### Archivos a modificar
+- `src/pages/Usuarios.tsx` — agregar tabla condicional para admin, suscripción a colección `users`, handler para actualizar rol.
 
-**En tu proyecto:**
-Estás usando `google/gemini-3-flash-preview` en ambas edge functions, así que actualmente estás en el periodo **gratuito** hasta enero 2026.
-
-**Documentación oficial:** https://docs.lovable.dev/features/ai
-
+### Notas técnicas
+- Listado en tiempo real con `onSnapshot(collection(db, "users"))`, ordenado por `createdAt desc`.
+- Actualización de rol con `updateDoc(doc(db, "users", uid), { role: nuevoRol })`.
+- No se crea ninguna página nueva ni ruta nueva — se aprovecha la existente del menú "Usuarios".
+- No se tocan reglas de Firestore en este plan (asumimos que el admin ya tiene permisos de lectura/escritura sobre `users`). Si las reglas lo bloquean, se aborda en un plan posterior.
